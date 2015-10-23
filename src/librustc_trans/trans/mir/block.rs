@@ -56,7 +56,9 @@ impl<'bcx, 'tcx> MirContext<'bcx, 'tcx> {
                 let represented_ty = adt::represent_type(bcx.ccx(), adt_ty);
 
                 let discr_lvalue = self.trans_lvalue(bcx, discr);
-                let discr = adt::trans_get_discr(bcx, &represented_ty, discr_lvalue.llval, None);
+                let discr = adt::trans_get_discr(bcx, &represented_ty,
+                                                 discr_lvalue.llval,
+                                                 None, true);
 
                 // The else branch of the Switch can't be hit, so branch to an unreachable
                 // instruction so LLVM knows that

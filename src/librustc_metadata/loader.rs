@@ -704,7 +704,7 @@ pub fn note_crate_name(diag: &Handler, name: &str) {
 impl ArchiveMetadata {
     fn new(ar: ArchiveRO) -> Option<ArchiveMetadata> {
         let data = {
-            let section = ar.iter().find(|sect| {
+            let section = ar.iter().filter_map(|s| s.ok()).find(|sect| {
                 sect.name() == Some(METADATA_FILENAME)
             });
             match section {
