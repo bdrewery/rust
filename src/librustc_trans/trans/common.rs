@@ -17,7 +17,7 @@ pub use self::ExprOrMethodCall::*;
 use session::Session;
 use llvm;
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ContextRef, TypeKind};
-use llvm::{True, False, Bool};
+use llvm::{True, False, Bool, OperandBundleDef};
 use middle::cfg;
 use middle::def;
 use middle::def_id::DefId;
@@ -365,10 +365,6 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
     // we use a separate alloca for each return
     pub needs_ret_allocas: bool,
 
-    // The a value alloca'd for calls to upcalls.rust_personality. Used when
-    // outputting the resume instruction.
-    pub personality: Cell<Option<ValueRef>>,
-
     // True if the caller expects this fn to use the out pointer to
     // return. Either way, your code should write into the slot llretslotptr
     // points to, but if this value is false, that slot will be a local alloca.
@@ -463,7 +459,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
     }
 
     pub fn new_block(&'a self,
-                     is_lpad: bool,
+                     lpad: Option<LandingPad>,
                      name: &str,
                      opt_node_id: Option<ast::NodeId>)
                      -> Block<'a, 'tcx> {
@@ -472,7 +468,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
             let llbb = llvm::LLVMAppendBasicBlockInContext(self.ccx.llcx(),
                                                            self.llfn,
                                                            name.as_ptr());
-            BlockS::new(llbb, is_lpad, opt_node_id, self)
+            BlockS::new(llbb, lpad, opt_node_id, self)
         }
     }
 
@@ -480,13 +476,13 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                         name: &str,
                         node_id: ast::NodeId)
                         -> Block<'a, 'tcx> {
-        self.new_block(false, name, Some(node_id))
+        self.new_block(None, name, Some(node_id))
     }
 
     pub fn new_temp_block(&'a self,
                           name: &str)
                           -> Block<'a, 'tcx> {
-        self.new_block(false, name, None)
+        self.new_block(None, name, None)
     }
 
     pub fn join_blocks(&'a self,
@@ -616,8 +612,9 @@ pub struct BlockS<'blk, 'tcx: 'blk> {
     pub terminated: Cell<bool>,
     pub unreachable: Cell<bool>,
 
-    // Is this block part of a landing pad?
-    pub is_lpad: bool,
+    // If this block part of a landing pad, then this is `Some` indicating what
+    // kind of landing pad its in, otherwise this is none.
+    pub lpad: Option<LandingPad>,
 
     // AST node-id associated with this block, if any. Used for
     // debugging purposes only.
@@ -632,7 +629,7 @@ pub type Block<'blk, 'tcx> = &'blk BlockS<'blk, 'tcx>;
 
 impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn new(llbb: BasicBlockRef,
-               is_lpad: bool,
+               lpad: Option<LandingPad>,
                opt_node_id: Option<ast::NodeId>,
                fcx: &'blk FunctionContext<'blk, 'tcx>)
                -> Block<'blk, 'tcx> {
@@ -640,7 +637,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             llbb: llbb,
             terminated: Cell::new(false),
             unreachable: Cell::new(false),
-            is_lpad: is_lpad,
+            lpad: lpad,
             opt_node_id: opt_node_id,
             fcx: fcx
         })
@@ -694,6 +691,39 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
         monomorphize::apply_param_substs(self.tcx(),
                                          self.fcx.param_substs,
                                          value)
+    }
+}
+
+pub struct LandingPad {
+    cleanuppad: Option<ValueRef>,
+    operand: Option<OperandBundleDef>,
+}
+
+impl LandingPad {
+    pub fn gnu() -> LandingPad {
+        LandingPad { cleanuppad: None, operand: None }
+    }
+
+    pub fn msvc(cleanuppad: ValueRef) -> LandingPad {
+        LandingPad {
+            cleanuppad: Some(cleanuppad),
+            operand: Some(OperandBundleDef::new("funclet", &[cleanuppad])),
+        }
+    }
+
+    pub fn bundle(&self) -> Option<&OperandBundleDef> {
+        self.operand.as_ref()
+    }
+}
+
+impl Clone for LandingPad {
+    fn clone(&self) -> LandingPad {
+        LandingPad {
+            cleanuppad: self.cleanuppad,
+            operand: self.cleanuppad.map(|p| {
+                OperandBundleDef::new("funclet", &[p])
+            }),
+        }
     }
 }
 
