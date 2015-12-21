@@ -284,7 +284,7 @@ $$(BACKTRACE_LIB_$(1)):
 	touch $$@
 else
 
-ifeq ($$(findstring msvc,$(1)),msvc)
+ifeq ($$(findstring windows,$(1)),windows)
 # See comment above
 $$(BACKTRACE_LIB_$(1)):
 	touch $$@

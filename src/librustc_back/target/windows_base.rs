@@ -62,15 +62,7 @@ pub fn opts() -> TargetOptions {
             "-Wl,--nxcompat".to_string(),
 
             // Do not use the standard system startup files or libraries when linking
-            "-nostdlib".to_string(),
-        ),
-        pre_link_objects_exe: vec!(
-            "crt2.o".to_string(),    // mingw C runtime initialization for executables
-            "rsbegin.o".to_string(), // Rust compiler runtime initialization, see rsbegin.rs
-        ),
-        pre_link_objects_dll: vec!(
-            "dllcrt2.o".to_string(), // mingw C runtime initialization for dlls
-            "rsbegin.o".to_string(),
+            "-nodefaultlibs".to_string(),
         ),
         late_link_args: vec!(
             "-lmingwex".to_string(),
@@ -80,10 +72,6 @@ pub fn opts() -> TargetOptions {
             "-luser32".to_string(),
             "-lkernel32".to_string(),
         ),
-        post_link_objects: vec!(
-            "rsend.o".to_string()
-        ),
-        custom_unwind_resume: true,
         exe_allocation_crate: super::maybe_jemalloc(),
 
         .. Default::default()

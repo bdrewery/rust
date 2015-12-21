@@ -172,3 +172,9 @@ mod imp {
 fn rust_eh_personality() {
     unsafe { ::intrinsics::abort() }
 }
+
+#[lang = "eh_unwind_resume"]
+#[cfg(stage0)]
+fn rust_eh_resume() {
+    unsafe { ::intrinsics::abort() }
+}

@@ -141,7 +141,11 @@ endef
 # $(2) - target triple
 # $(3) - host triple
 # $(4) - object basename
+#
+# FIXME(stage0) - remove
 define TARGET_RUSTRT_STARTUP_OBJ
+
+ifeq ($$(CFG_RUSTRT_HAS_STARTUP_OBJS_$(2)), 1)
 
 $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o: \
 		$(S)src/rtstartup/$(4).rs \
@@ -150,8 +154,9 @@ $$(TLIB$(1)_T_$(2)_H_$(3))/$(4).o: \
 		| $$(TBIN$(1)_T_$(2)_H_$(3))/
 	@$$(call E, rustc: $$@)
 	$$(STAGE$(1)_T_$(2)_H_$(3)) --emit=obj -o $$@ $$<
+$$(TLIB$(1)_T_$(2)_H_$(3))/stamp.std: $$(foreach obj,crt2.o dllcrt2.o,\
+	$$(TLIB$(1)_T_$(2)_H_$(3))/$$(obj))
 
-ifeq ($$(CFG_RUSTRT_HAS_STARTUP_OBJS_$(2)), 1)
 # Add dependencies on Rust startup objects to all crates that depend on core.
 # This ensures that they are built after core (since they depend on it),
 # but before everything else (since they are needed for linking dylib crates).
@@ -205,8 +210,9 @@ $(foreach host,$(CFG_HOST), \
    $(foreach tool,$(TOOLS), \
     $(eval $(call TARGET_TOOL,$(stage),$(target),$(host),$(tool)))))))
 
+# FIXME(stage0) - remove this
 $(foreach host,$(CFG_HOST), \
  $(foreach target,$(CFG_TARGET), \
-  $(foreach stage,$(STAGES), \
-   $(foreach obj,rsbegin rsend, \
-    $(eval $(call TARGET_RUSTRT_STARTUP_OBJ,$(stage),$(target),$(host),$(obj)))))))
+  $(foreach obj,rsbegin rsend, \
+   $(eval $(call TARGET_RUSTRT_STARTUP_OBJ,0,$(target),$(host),$(obj))))))
+

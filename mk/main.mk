@@ -174,6 +174,10 @@ ifdef CFG_DISABLE_STAGE0_LANDING_PADS
   RUSTFLAGS_STAGE0 += -Z no-landing-pads
 endif
 
+ifeq ($(findstring windows,$(CFG_BUILD)),windows)
+  RUSTFLAGS_STAGE0 += -Z no-landing-pads
+endif
+
 # platform-specific auto-configuration
 include $(CFG_SRC_DIR)mk/platform.mk
 

@@ -744,7 +744,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                             lpad = Some(LandingPad::gnu());
                             let prev_bcx = self.new_block(lpad.clone(),
                                                           "resume", None);
-                            base::trans_unwind_resume(prev_bcx, lp);
+                            build::Resume(prev_bcx, lp);
                             prev_llbb = prev_bcx.llbb;
                         }
                         break;

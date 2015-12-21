@@ -44,25 +44,12 @@
 //! Once stack has been unwound down to the handler frame level, unwinding stops
 //! and the last personality routine transfers control to the catch block.
 //!
-//! ## `eh_personality` and `eh_unwind_resume`
+//! ## `eh_personality`
 //!
 //! These language items are used by the compiler when generating unwind info.
 //! The first one is the personality routine described above.  The second one
 //! allows compilation target to customize the process of resuming unwind at the
-//! end of the landing pads.  `eh_unwind_resume` is used only if `custom_unwind_resume`
-//! flag in the target options is set.
-//!
-//! ## Frame unwind info registration
-//!
-//! Each module's image contains a frame unwind info section (usually ".eh_frame").
-//! When a module is loaded/unloaded into the process, the unwinder must be informed
-//! about the location of this section in memory. The methods of achieving that vary
-//! by the platform.
-//! On some (e.g. Linux), the unwinder can discover unwind info sections on its own
-//! (by dynamically enumerating currently loaded modules via the dl_iterate_phdr() API
-//! and finding their ".eh_frame" sections);
-//! Others, like Windows, require modules to actively register their unwind info
-//! sections via unwinder API (see `rust_eh_register_frames`/`rust_eh_unregister_frames`).
+//! end of the landing pads.
 
 #![allow(dead_code)]
 #![allow(unused_imports)]
@@ -83,18 +70,11 @@ use sys_common::mutex::Mutex;
 // implementations. One goes through SEH on Windows and the other goes through
 // libgcc via the libunwind-like API.
 
-// *-pc-windows-msvc
-#[cfg(target_env = "msvc")]
+#[cfg(windows)]
 #[path = "seh.rs"] #[doc(hidden)]
 pub mod imp;
 
-// x86_64-pc-windows-gnu
-#[cfg(all(windows, target_arch = "x86_64", target_env = "gnu"))]
-#[path = "seh64_gnu.rs"] #[doc(hidden)]
-pub mod imp;
-
-// i686-pc-windows-gnu and all others
-#[cfg(any(unix, all(windows, target_arch = "x86", target_env = "gnu")))]
+#[cfg(unix)]
 #[path = "gcc.rs"] #[doc(hidden)]
 pub mod imp;
 
