@@ -19,4 +19,4 @@ RUN sh /scripts/sccache.sh
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --enable-full-bootstrap
-ENV SCRIPT python2.7 ../x.py build
+ENV SCRIPT python2.7 /checkout/x.py build

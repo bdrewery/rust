@@ -54,17 +54,12 @@ travis_time_finish
 
 objdir=$root_dir/obj
 
-mkdir -p $HOME/.cargo
-mkdir -p $objdir/tmp
-
 args=
 if [ "$SCCACHE_BUCKET" != "" ]; then
     args="$args --env SCCACHE_BUCKET"
     args="$args --env SCCACHE_REGION"
     args="$args --env AWS_ACCESS_KEY_ID"
     args="$args --env AWS_SECRET_ACCESS_KEY"
-    args="$args --env SCCACHE_ERROR_LOG=/tmp/sccache/sccache.log"
-    args="$args --volume $objdir/tmp:/tmp/sccache"
 else
     mkdir -p $HOME/.cache/sccache
     args="$args --env SCCACHE_DIR=/sccache --volume $HOME/.cache/sccache:/sccache"
@@ -77,22 +72,50 @@ fi
 # goes ahead and sets it for all builders.
 args="$args --privileged"
 
-exec docker \
-  run \
-  --volume "$root_dir:/checkout:ro" \
-  --volume "$objdir:/checkout/obj" \
-  --workdir /checkout/obj \
-  --env SRC=/checkout \
-  $args \
-  --env CARGO_HOME=/cargo \
-  --env DEPLOY \
-  --env DEPLOY_ALT \
-  --env LOCAL_USER_ID=`id -u` \
-  --env TRAVIS \
-  --env TRAVIS_BRANCH \
-  --volume "$HOME/.cargo:/cargo" \
-  --volume "$HOME/rustsrc:$HOME/rustsrc" \
-  --init \
-  --rm \
-  rust-ci \
-  /checkout/src/ci/run.sh
+if [ "$CI" != "" ]; then
+  docker create -v /checkout --name src alpine:3.4 /bin/true
+  echo "copying current directory to new docker volume"
+  docker cp . src:/checkout
+
+  docker \
+    run \
+    --volumes-from src \
+    --workdir /obj \
+    --env SRC=/checkout \
+    $args \
+    --env DEPLOY \
+    --env DEPLOY_ALT \
+    --init \
+    --name rust-ci-build \
+    rust-ci \
+    /checkout/src/ci/run.sh
+
+  if [ "$DEPLOY" != "" ]; then
+    mkdir -p $objdir/build
+    docker cp rust-ci-build:/obj/build/dist $objdir/build
+    find $objdir
+  fi
+else
+  mkdir -p $HOME/.cargo
+  mkdir -p $objdir/tmp
+
+  exec docker \
+    run \
+    --volume "$root_dir:/checkout:ro" \
+    --volume "$objdir:/checkout/obj" \
+    --workdir /checkout/obj \
+    --env SRC=/checkout \
+    $args \
+    --env CARGO_HOME=/cargo \
+    --env DEPLOY \
+    --env DEPLOY_ALT \
+    --env LOCAL_USER_ID=`id -u` \
+    --env TRAVIS \
+    --env TRAVIS_BRANCH \
+    --volume "$HOME/.cargo:/cargo" \
+    --volume "$HOME/rustsrc:$HOME/rustsrc" \
+    --init \
+    --rm \
+    rust-ci \
+    /checkout/src/ci/run.sh
+fi

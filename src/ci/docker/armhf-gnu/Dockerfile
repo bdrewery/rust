@@ -79,6 +79,6 @@ RUN sh /scripts/sccache.sh
 ENV RUST_CONFIGURE_ARGS \
       --target=arm-unknown-linux-gnueabihf \
       --qemu-armhf-rootfs=/tmp/rootfs
-ENV SCRIPT python2.7 ../x.py test --target arm-unknown-linux-gnueabihf
+ENV SCRIPT python2.7 /checkout/x.py test --target arm-unknown-linux-gnueabihf
 
 ENV NO_CHANGE_USER=1

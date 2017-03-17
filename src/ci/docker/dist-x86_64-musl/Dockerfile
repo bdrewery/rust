@@ -36,5 +36,5 @@ ENV RUST_CONFIGURE_ARGS \
 ENV CFLAGS_x86_64_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
 ENV SCRIPT \
-      python2.7 ../x.py test --target x86_64-unknown-linux-musl && \
-      python2.7 ../x.py dist --target x86_64-unknown-linux-musl
+      python2.7 /checkout/x.py test --target x86_64-unknown-linux-musl && \
+      python2.7 /checkout/x.py dist --target x86_64-unknown-linux-musl

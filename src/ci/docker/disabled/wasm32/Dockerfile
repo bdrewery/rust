@@ -32,4 +32,4 @@ ENV TARGETS=wasm32-unknown-emscripten
 
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS
+ENV SCRIPT python2.7 /checkout/x.py test --target $TARGETS

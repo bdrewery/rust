@@ -35,4 +35,4 @@ ENV \
 ENV HOSTS=s390x-unknown-linux-gnu
 
 ENV RUST_CONFIGURE_ARGS --host=$HOSTS --enable-extended
-ENV SCRIPT python2.7 ../x.py dist --host $HOSTS --target $HOSTS
+ENV SCRIPT python2.7 /checkout/x.py dist --host $HOSTS --target $HOSTS

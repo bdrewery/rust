@@ -1,0 +1,150 @@
+job: &JOB
+  machine:
+    enabled: true
+    image: circleci/classic:latest
+  steps:
+    - checkout
+    # update locally with:
+    # openssl aes-256-cbc -e -in secret-env-plain -out secret-env-cipher -k $KEY
+    - run: openssl aes-256-cbc -d -in .circleci/circle-secrets -k $KEY >> $BASH_ENV
+    - run: curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl && chmod +x $HOME/stamp
+
+    # Attempt to load some previous layers from the docker cache. If this works
+    # it should make construction of the docker image below much faster
+    - restore_cache:
+        keys:
+          - v1-docker-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}
+          - v1-docker-{{ .Environment.CIRCLE_JOB }}
+    - run: zcat /tmp/docker.tar.gz | docker load || true
+
+    - run: mkdir -p $HOME/rustsrc
+    - run: $HOME/stamp src/ci/init_repo.sh . $HOME/rustsrc
+    - run: $HOME/stamp ./src/ci/docker/run.sh $CIRCLE_JOB
+
+    # Save off all the layers we used for our container and put it in the cache,
+    # this'll hopefully be used to make the next run a bit speedier.
+    - run: docker history -q rust-ci | grep -v missing | xargs docker save | gzip > /tmp/docker.tar.gz
+    - save_cache:
+        key: v1-docker-{{ .Environment.CIRCLE_JOB }}-{{ .Branch }}
+        paths:
+          - /tmp/docker.tar.gz
+
+job2: &JOB2
+  docker:
+    - image: docker:17.09.0-ce
+      environment:
+        SCCACHE_BUCKET: rust-lang-ci-sccache2
+        SCCACHE_REGION: us-west-1
+        AWS_ACCESS_KEY_ID: AKIAJAMV3QAMMA6AXHFQ
+
+  resource_class: large
+
+  steps:
+    - run: apk update
+    - run: apk add git curl openssh openssl bash
+    - checkout
+    - setup_remote_docker
+        # reusable: true
+    - run: openssl aes-256-cbc -d -in .circleci/circle-secrets -k $KEY >> $BASH_ENV
+    - run: curl -fo $HOME/stamp https://s3-us-west-1.amazonaws.com/rust-lang-ci2/rust-ci-mirror/2017-03-17-stamp-x86_64-unknown-linux-musl && chmod +x $HOME/stamp
+
+    - run: mkdir -p $HOME/rustsrc
+    - run: $HOME/stamp src/ci/init_repo.sh . $HOME/rustsrc
+    - run:
+        command: $HOME/stamp ./src/ci/docker/run.sh $CIRCLE_JOB
+        no_output_timeout: 30m
+
+deploy: &DEPLOY
+  <<: *JOB2
+  environment:
+    DEPLOY: 1
+
+# deploy_alt: &DEPLOY_ALT
+#   <<: *JOB2
+#   environment:
+#     DEPLOY_ALT: 1
+
+version: 2
+jobs:
+  x86_64-gnu-llvm-3.7: *JOB2
+  dist-x86_64-linux: *DEPLOY
+  #dist-x86_64-linux: *DEPLOY_ALT
+  arm-android: *JOB2
+  armhf-gnu: *JOB2
+  cross: *DEPLOY
+  cross2: *DEPLOY
+  dist-aarch64-linux: *DEPLOY
+  dist-android: *DEPLOY
+  dist-arm-linux: *DEPLOY
+  dist-armhf-linux: *DEPLOY
+  dist-armv7-linux: *DEPLOY
+  dist-i586-gnu-i686-musl: *DEPLOY
+  dist-i686-freebsd: *DEPLOY
+  dist-i686-linux: *DEPLOY
+  dist-mips-linux: *DEPLOY
+  dist-mips64-linux: *DEPLOY
+  dist-mips64el-linux: *DEPLOY
+  dist-mipsel-linux: *DEPLOY
+  dist-powerpc-linux: *DEPLOY
+  dist-powerpc64-linux: *DEPLOY
+  dist-powerpc64le-linux: *DEPLOY
+  dist-s390x-linux: *DEPLOY
+  dist-x86_64-freebsd: *DEPLOY
+  dist-x86_64-musl: *DEPLOY
+  dist-x86_64-netbsd: *DEPLOY
+  asmjs: *JOB2
+  i686-gnu: *JOB2
+  i686-gnu-nopt: *JOB2
+  x86_64-gnu: *JOB2
+  x86_64-gnu-full-bootstrap: *JOB2
+  x86_64-gnu-aux: *JOB2
+  x86_64-gnu-debug: *JOB2
+  x86_64-gnu-nopt: *JOB2
+  x86_64-gnu-distcheck: *JOB2
+  x86_64-gnu-incremental: *JOB2
+
+only_auto: &ONLY_AUTO
+  filters:
+    branches:
+      ignore: auto
+
+workflows:
+  version: 2
+  tests:
+    jobs:
+      - x86_64-gnu-llvm-3.7: *ONLY_AUTO
+      - dist-x86_64-linux: *ONLY_AUTO
+      - arm-android: *ONLY_AUTO
+      - armhf-gnu: *ONLY_AUTO
+      - cross: *ONLY_AUTO
+      - cross2: *ONLY_AUTO
+      - dist-aarch64-linux: *ONLY_AUTO
+      - dist-android: *ONLY_AUTO
+      - dist-arm-linux: *ONLY_AUTO
+      - dist-armhf-linux: *ONLY_AUTO
+      - dist-armv7-linux: *ONLY_AUTO
+      - dist-fuchsia: *ONLY_AUTO
+      - dist-i586-gnu-i686-musl: *ONLY_AUTO
+      - dist-i686-freebsd: *ONLY_AUTO
+      - dist-i686-linux: *ONLY_AUTO
+      - dist-mips-linux: *ONLY_AUTO
+      - dist-mips64-linux: *ONLY_AUTO
+      - dist-mips64el-linux: *ONLY_AUTO
+      - dist-mipsel-linux: *ONLY_AUTO
+      - dist-powerpc-linux: *ONLY_AUTO
+      - dist-powerpc64-linux: *ONLY_AUTO
+      - dist-powerpc64le-linux: *ONLY_AUTO
+      - dist-s390x-linux: *ONLY_AUTO
+      - dist-x86_64-freebsd: *ONLY_AUTO
+      - dist-x86_64-musl: *ONLY_AUTO
+      - dist-x86_64-netbsd: *ONLY_AUTO
+      - asmjs: *ONLY_AUTO
+      - i686-gnu: *ONLY_AUTO
+      - i686-gnu-nopt: *ONLY_AUTO
+      - x86_64-gnu: *ONLY_AUTO
+      - x86_64-gnu-full-bootstrap: *ONLY_AUTO
+      - x86_64-gnu-aux: *ONLY_AUTO
+      - x86_64-gnu-debug: *ONLY_AUTO
+      - x86_64-gnu-nopt: *ONLY_AUTO
+      - x86_64-gnu-distcheck: *ONLY_AUTO
+      - x86_64-gnu-incremental: *ONLY_AUTO

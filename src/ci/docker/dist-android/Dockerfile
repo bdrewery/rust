@@ -29,7 +29,7 @@ ENV RUST_CONFIGURE_ARGS \
       --aarch64-linux-android-ndk=/android/ndk/arm64-21 \
       --x86_64-linux-android-ndk=/android/ndk/x86_64-21
 
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT python2.7 /checkout/x.py dist --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

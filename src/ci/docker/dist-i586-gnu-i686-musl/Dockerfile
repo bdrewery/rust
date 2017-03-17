@@ -36,10 +36,10 @@ ENV RUST_CONFIGURE_ARGS \
 ENV CFLAGS_i686_unknown_linux_musl=-Wa,-mrelax-relocations=no
 
 ENV SCRIPT \
-      python2.7 ../x.py test \
+      python2.7 /checkout/x.py test \
           --target i686-unknown-linux-musl \
           --target i586-unknown-linux-gnu \
           && \
-      python2.7 ../x.py dist \
+      python2.7 /checkout/x.py dist \
           --target i686-unknown-linux-musl \
           --target i586-unknown-linux-gnu

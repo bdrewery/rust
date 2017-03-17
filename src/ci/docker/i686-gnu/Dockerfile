@@ -18,4 +18,4 @@ COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
 
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
-ENV SCRIPT python2.7 ../x.py test
+ENV SCRIPT python2.7 /checkout/x.py test

@@ -66,7 +66,7 @@ ENV RUST_CONFIGURE_ARGS \
       --musl-root-armhf=/usr/local/arm-linux-musleabihf \
       --musl-root-armv7=/usr/local/armv7-linux-musleabihf \
       --musl-root-aarch64=/usr/local/aarch64-linux-musl
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT python2.7 /checkout/x.py dist --target $TARGETS
 
 # sccache
 COPY scripts/sccache.sh /scripts/

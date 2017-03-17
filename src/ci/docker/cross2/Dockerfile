@@ -49,4 +49,4 @@ ENV TARGETS=$TARGETS,sparcv9-sun-solaris
 ENV TARGETS=$TARGETS,x86_64-sun-solaris
 
 ENV RUST_CONFIGURE_ARGS --target=$TARGETS --enable-extended
-ENV SCRIPT python2.7 ../x.py dist --target $TARGETS
+ENV SCRIPT python2.7 /checkout/x.py dist --target $TARGETS

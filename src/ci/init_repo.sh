@@ -75,7 +75,7 @@ for module in $modules; do
         continue
     fi
     retry sh -c "git submodule deinit -f $module && \
-        git submodule update --init --recursive --reference $cache_src_dir/$module $module"
+        git submodule update --init --recursive"
 done
 
 travis_fold end update_submodules

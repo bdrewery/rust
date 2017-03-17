@@ -29,7 +29,7 @@ ENV RUST_CONFIGURE_ARGS \
       --target=$TARGETS \
       --arm-linux-androideabi-ndk=/android/ndk/arm-9
 
-ENV SCRIPT python2.7 ../x.py test --target $TARGETS
+ENV SCRIPT python2.7 /checkout/x.py test --target $TARGETS
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
