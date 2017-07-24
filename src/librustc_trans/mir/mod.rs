@@ -566,16 +566,18 @@ fn arg_local_refs<'a, 'tcx>(bcx: &Builder<'a, 'tcx>,
                     alloca: env_ptr,
                     address_operations: &ops
                 };
-                declare_local(
-                    bcx,
-                    &mircx.debug_context,
-                    decl.debug_name,
-                    ty,
-                    scope,
-                    variable_access,
-                    VariableKind::CapturedVariable,
-                    DUMMY_SP
-                );
+                if false {
+                    declare_local(
+                        bcx,
+                        &mircx.debug_context,
+                        decl.debug_name,
+                        ty,
+                        scope,
+                        variable_access,
+                        VariableKind::CapturedVariable,
+                        DUMMY_SP
+                    );
+                }
             }
         });
         LocalRef::Place(place)
