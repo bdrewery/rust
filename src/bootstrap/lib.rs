@@ -668,7 +668,9 @@ impl Build {
                                                        .and_then(|c| c.linker.as_ref()) {
             Some(linker)
         } else if target != self.config.build &&
-                  !target.contains("msvc") && !target.contains("emscripten") {
+                  !target.contains("msvc") &&
+                  !target.contains("emscripten") &&
+                  !target.contains("wasm32") {
             Some(self.cc(target))
         } else {
             None

@@ -84,6 +84,7 @@ linker_flavor! {
     (Gcc, "gcc"),
     (Ld, "ld"),
     (Msvc, "msvc"),
+    (WasmLd, "wasm-ld"),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Hash, RustcEncodable, RustcDecodable)]

@@ -113,3 +113,6 @@ for (var i = 0; i < module_imports.length; i++) {
 }
 
 let instance = new WebAssembly.Instance(m, imports);
+if (instance.exports.memory)
+  memory = instance.exports.memory;
+instance.exports.main();

@@ -41,7 +41,7 @@ use super::{Target, TargetOptions, PanicStrategy};
 
 pub fn target() -> Result<Target, String> {
     let opts = TargetOptions {
-        linker: "not-used".to_string(),
+        linker: "wasm-ld".to_string(),
 
         // we allow dynamic linking, but only cdylibs. Basically we allow a
         // final library artifact that exports some symbols (a wasm module) but
@@ -58,9 +58,6 @@ pub fn target() -> Result<Target, String> {
         dll_suffix: ".wasm".to_string(),
         linker_is_gnu: false,
 
-        // We're storing bitcode for now in all the rlibs
-        obj_is_bitcode: true,
-
         // A bit of a lie, but "eh"
         max_atomic_width: Some(32),
 
@@ -69,19 +66,9 @@ pub fn target() -> Result<Target, String> {
         // the future once unwinding is implemented. Don't rely on this.
         panic_strategy: PanicStrategy::Abort,
 
-        // There's no linker yet so we're forced to use LLVM as a linker. This
-        // means that we must always enable LTO for final artifacts.
-        requires_lto: true,
-
         // Wasm doesn't have atomics yet, so tell LLVM that we're in a single
         // threaded model which will legalize atomics to normal operations.
         singlethread: true,
-
-        // Because we're always enabling LTO we can't enable builtin lowering as
-        // otherwise we'll lower the definition of the `memcpy` function to
-        // memcpy itself. Note that this is specifically because we're
-        // performing LTO with compiler-builtins.
-        no_builtins: true,
 
         // no dynamic linking, no need for default visibility!
         default_hidden_visibility: true,
@@ -89,7 +76,7 @@ pub fn target() -> Result<Target, String> {
         .. Default::default()
     };
     Ok(Target {
-        llvm_target: "wasm32-unknown-unknown".to_string(),
+        llvm_target: "wasm32-unknown-unknown-wasm".to_string(),
         target_endian: "little".to_string(),
         target_pointer_width: "32".to_string(),
         target_c_int_width: "32".to_string(),
@@ -100,8 +87,7 @@ pub fn target() -> Result<Target, String> {
         target_vendor: "unknown".to_string(),
         data_layout: "e-m:e-p:32:32-i64:64-n32:64-S128".to_string(),
         arch: "wasm32".to_string(),
-        // A bit of a lie, but it gets the job done
-        linker_flavor: LinkerFlavor::Binaryen,
+        linker_flavor: LinkerFlavor::WasmLd,
         options: opts,
     })
 }
