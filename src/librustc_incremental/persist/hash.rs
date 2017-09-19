@@ -22,21 +22,15 @@ use super::data::*;
 use super::fs::*;
 use super::file_format;
 
-use std::hash::Hash;
-use std::fmt::Debug;
 
 pub struct HashContext<'a, 'tcx: 'a> {
     pub tcx: TyCtxt<'a, 'tcx, 'tcx>,
-    metadata_hashes: FxHashMap<DefId, Fingerprint>,
-    crate_hashes: FxHashMap<CrateNum, Svh>,
 }
 
 impl<'a, 'tcx> HashContext<'a, 'tcx> {
     pub fn new(tcx: TyCtxt<'a, 'tcx, 'tcx>) -> Self {
         HashContext {
             tcx,
-            metadata_hashes: FxHashMap(),
-            crate_hashes: FxHashMap(),
         }
     }
 
@@ -46,21 +40,9 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             DepKind::Krate |
             DepKind::InScopeTraits |
             DepKind::Hir |
+            DepKind::MetaData |
             DepKind::HirBody => {
-                Some(self.tcx.dep_graph.fingerprint_of(dep_node).unwrap())
-            }
-
-            // MetaData from other crates is an *input* to us.
-            // MetaData nodes from *our* crates are an *output*; we
-            // don't hash them, but we do compute a hash for them and
-            // save it for others to use.
-            DepKind::MetaData => {
-                let def_id = dep_node.extract_def_id(self.tcx).unwrap();
-                assert!(!def_id.is_local());
-
-                Some(self.metadata_hash(def_id,
-                                        def_id.krate,
-                                        |this| &mut this.metadata_hashes))
+                Some(self.tcx.dep_graph.fingerprint_of(dep_node, Some(self.tcx)))
             }
 
             _ => {
@@ -72,50 +54,49 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
             }
         }
     }
+}
 
-    fn metadata_hash<K, C>(&mut self,
-                           key: K,
-                           cnum: CrateNum,
-                           cache: C)
-                           -> Fingerprint
-        where K: Hash + Eq + Debug,
-              C: Fn(&mut Self) -> &mut FxHashMap<K, Fingerprint>,
-    {
-        debug!("metadata_hash(key={:?})", key);
+struct MetadataHashLoader {
+    metadata_hashes: FxHashMap<DefId, Fingerprint>,
+    crate_hashes: FxHashMap<CrateNum, Svh>,
+}
 
-        debug_assert!(cnum != LOCAL_CRATE);
+impl MetadataHashLoader {
+    fn metadata_hash(&mut self, id: DefId, tcx: TyCtxt) -> Fingerprint {
+        debug!("metadata_hash(id={:?})", id);
+
+        debug_assert!(id.krate != LOCAL_CRATE);
         loop {
             // check whether we have a result cached for this def-id
-            if let Some(&hash) = cache(self).get(&key) {
+            if let Some(&hash) = self.metadata_hashes.get(&id) {
                 return hash;
             }
 
             // check whether we did not find detailed metadata for this
             // krate; in that case, we just use the krate's overall hash
-            if let Some(&svh) = self.crate_hashes.get(&cnum) {
+            if let Some(&svh) = self.crate_hashes.get(&id.krate) {
                 // micro-"optimization": avoid a cache miss if we ask
                 // for metadata from this particular def-id again.
                 let fingerprint = svh_to_fingerprint(svh);
-                cache(self).insert(key, fingerprint);
-
+                self.metadata_hashes.insert(id, fingerprint);
                 return fingerprint;
             }
 
             // otherwise, load the data and repeat.
-            self.load_data(cnum);
-            assert!(self.crate_hashes.contains_key(&cnum));
+            self.load_data(id.krate, tcx);
+            assert!(self.crate_hashes.contains_key(&id.krate));
         }
     }
 
-    fn load_data(&mut self, cnum: CrateNum) {
+    fn load_data(&mut self, cnum: CrateNum, tcx: TyCtxt) {
         debug!("load_data(cnum={})", cnum);
 
-        let svh = self.tcx.crate_hash(cnum);
+        let svh = tcx.crate_hash(cnum);
         let old = self.crate_hashes.insert(cnum, svh);
         debug!("load_data: svh={}", svh);
         assert!(old.is_none(), "loaded data for crate {:?} twice", cnum);
 
-        if let Some(session_dir) = find_metadata_hashes_for(self.tcx, cnum) {
+        if let Some(session_dir) = find_metadata_hashes_for(tcx, cnum) {
             debug!("load_data: session_dir={:?}", session_dir);
 
             // Lock the directory we'll be reading  the hashes from.
@@ -141,7 +122,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
             let hashes_file_path = metadata_hash_import_path(&session_dir);
 
-            match file_format::read_file(self.tcx.sess, &hashes_file_path)
+            match file_format::read_file(tcx.sess, &hashes_file_path)
             {
                 Ok(Some(data)) => {
                     match self.load_from_data(cnum, &data, svh) {
@@ -156,7 +137,7 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
                     // If the file is not found, that's ok.
                 }
                 Err(err) => {
-                    self.tcx.sess.err(
+                    tcx.sess.err(
                         &format!("could not load dep information from `{}`: {}",
                                  hashes_file_path.display(), err));
                 }
@@ -199,4 +180,12 @@ impl<'a, 'tcx> HashContext<'a, 'tcx> {
 
 fn svh_to_fingerprint(svh: Svh) -> Fingerprint {
     Fingerprint::from_smaller_hash(svh.as_u64())
+}
+
+pub fn metadata_fingerprint() -> Box<FnMut(DefId, TyCtxt) -> Fingerprint> {
+    let mut loader = MetadataHashLoader {
+        crate_hashes: FxHashMap(),
+        metadata_hashes: FxHashMap(),
+    };
+    Box::new(move |id, tcx| loader.metadata_hash(id, tcx))
 }

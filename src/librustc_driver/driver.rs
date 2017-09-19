@@ -643,7 +643,11 @@ pub fn phase_2_configure_and_expand<F>(sess: &Session,
         &crate_name,
         &disambiguator.as_str(),
     );
-    let dep_graph = DepGraph::new(sess.opts.build_dep_graph());
+    let dep_graph = DepGraph::new(if sess.opts.build_dep_graph() {
+        Some(rustc_incremental::metadata_fingerprint())
+    } else {
+        None
+    });
 
     time(time_passes, "recursion limit", || {
         middle::recursion_limit::update_limits(sess, &krate);

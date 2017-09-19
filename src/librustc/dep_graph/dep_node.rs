@@ -308,11 +308,9 @@ macro_rules! define_dep_nodes {
             pub fn extract_def_id(&self, tcx: TyCtxt) -> Option<DefId> {
                 if self.kind.can_reconstruct_query_key() {
                     let def_path_hash = DefPathHash(self.hash);
-                    if let Some(ref def_path_map) = tcx.def_path_hash_to_def_id.as_ref() {
-                        def_path_map.get(&def_path_hash).cloned()
-                    } else {
-                       None
-                    }
+                    tcx.def_path_hash_to_def_id
+                        .as_ref()
+                        .and_then(|map| map.get(&def_path_hash).cloned())
                 } else {
                     None
                 }

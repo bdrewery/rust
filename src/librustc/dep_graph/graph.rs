@@ -16,7 +16,9 @@ use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 use util::common::{ProfileQueriesMsg, profq_msg};
 
+use hir::def_id::DefId;
 use ich::Fingerprint;
+use ty::TyCtxt;
 
 use super::dep_node::{DepNode, DepKind, WorkProductId};
 use super::query::DepGraphQuery;
@@ -27,7 +29,8 @@ use super::edges::{DepGraphEdges, DepNodeIndex};
 #[derive(Clone)]
 pub struct DepGraph {
     data: Option<Rc<DepGraphData>>,
-    fingerprints: Rc<RefCell<FxHashMap<DepNode, Fingerprint>>>
+    fingerprints: Rc<RefCell<FxHashMap<DepNode, Fingerprint>>>,
+    metadata_fingerprints: Option<Rc<RefCell<Box<FnMut(DefId, TyCtxt) -> Fingerprint>>>>,
 }
 
 struct DepGraphData {
@@ -47,9 +50,11 @@ struct DepGraphData {
 }
 
 impl DepGraph {
-    pub fn new(enabled: bool) -> DepGraph {
+    pub fn new(metadata_fingerprints: Option<Box<FnMut(DefId, TyCtxt) -> Fingerprint>>)
+        -> DepGraph
+    {
         DepGraph {
-            data: if enabled {
+            data: if metadata_fingerprints.is_some() {
                 Some(Rc::new(DepGraphData {
                     previous_work_products: RefCell::new(FxHashMap()),
                     work_products: RefCell::new(FxHashMap()),
@@ -60,6 +65,7 @@ impl DepGraph {
                 None
             },
             fingerprints: Rc::new(RefCell::new(FxHashMap())),
+            metadata_fingerprints: metadata_fingerprints.map(|f| Rc::new(RefCell::new(f))),
         }
     }
 
@@ -213,8 +219,31 @@ impl DepGraph {
         }
     }
 
-    pub fn fingerprint_of(&self, dep_node: &DepNode) -> Option<Fingerprint> {
-        self.fingerprints.borrow().get(dep_node).cloned()
+    // Retrieves the current result fingerprint associated with the given
+    // DepNode. This method will panic if there is no such DepNode in the
+    // current graph or if the task corresponding to the DepNode has not been
+    // executed yet.
+    // The `def_path_hash_to_def_id` is guaranteed to only be used if the
+    // DepNode has DepKind::Metadata. Otherwise a `|_| panic!()` can safely
+    // be passed for it.
+    pub fn fingerprint_of(&self, dep_node: &DepNode, tcx: Option<TyCtxt>)
+        -> Fingerprint
+    {
+        match dep_node.kind {
+            // For MetaData nodes, we currently have special handling, since
+            // their hashes are already compute during crate metadata export
+            // and stored in an extra file in the incr.comp. session dir.
+            DepKind::MetaData => {
+                let tcx = tcx.expect("can't get a fingerprint of metadata \
+                                      node w/o a tcx");
+                let def_id = dep_node.extract_def_id(tcx)
+                    .expect("failed to reconstruct def_id from path");
+                let closure = self.metadata_fingerprints.as_ref().unwrap();
+                let mut slot = closure.borrow_mut();
+                (&mut **slot)(def_id, tcx)
+            }
+            _ => self.fingerprints.borrow()[dep_node]
+        }
     }
 
     /// Indicates that a previous work product exists for `v`. This is
