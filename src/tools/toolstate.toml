@@ -22,3 +22,9 @@
 
 # ping @oli-obk @RalfJung @eddyb
 miri = "Testing"
+
+# ping @nrc @alexcrichton
+rustfmt = "Testing"
+
+# ping @nrc @alexcrichton
+rls = "Testing"
