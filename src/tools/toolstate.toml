@@ -27,4 +27,4 @@ miri = "Testing"
 rustfmt = "Testing"
 
 # ping @nrc @alexcrichton
-rls = "Testing"
+rls = "Broken"

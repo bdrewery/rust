@@ -1035,7 +1035,7 @@ pub struct Rls {
 }
 
 impl Step for Rls {
-    type Output = PathBuf;
+    type Output = Option<PathBuf>;
     const ONLY_BUILD_TARGETS: bool = true;
     const ONLY_HOSTS: bool = true;
 
@@ -1050,11 +1050,16 @@ impl Step for Rls {
         });
     }
 
-    fn run(self, builder: &Builder) -> PathBuf {
+    fn run(self, builder: &Builder) -> Option<PathBuf> {
         let build = builder.build;
         let stage = self.stage;
         let target = self.target;
         assert!(build.config.extended);
+
+        if !builder.config.toolstate.rls.testing() {
+            println!("skipping Dist RLS stage{} ({})", stage, target);
+            return None
+        }
 
         println!("Dist RLS stage{} ({})", stage, target);
         let src = build.src.join("src/tools/rls");
@@ -1107,7 +1112,7 @@ impl Step for Rls {
         }
 
         build.run(&mut cmd);
-        distdir(build).join(format!("{}-{}.tar.gz", name, target))
+        Some(distdir(build).join(format!("{}-{}.tar.gz", name, target)))
     }
 }
 
@@ -1207,8 +1212,12 @@ impl Step for Extended {
         // upgrades rustc was upgraded before rust-std. To avoid rustc clobbering
         // the std files during uninstall. To do this ensure that rustc comes
         // before rust-std in the list below.
-        let mut tarballs = vec![rustc_installer, cargo_installer, rls_installer,
-                                analysis_installer, std_installer];
+        let mut tarballs = Vec::new();
+        tarballs.push(rustc_installer);
+        tarballs.push(cargo_installer);
+        tarballs.extend(rls_installer.clone());
+        tarballs.push(analysis_installer);
+        tarballs.push(std_installer);
         if build.config.docs {
             tarballs.push(docs_installer);
         }
@@ -1257,7 +1266,6 @@ impl Step for Extended {
             t!(fs::create_dir_all(pkg.join("cargo")));
             t!(fs::create_dir_all(pkg.join("rust-docs")));
             t!(fs::create_dir_all(pkg.join("rust-std")));
-            t!(fs::create_dir_all(pkg.join("rls")));
             t!(fs::create_dir_all(pkg.join("rust-analysis")));
 
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rustc"), target)),
@@ -1268,8 +1276,6 @@ impl Step for Extended {
                     &pkg.join("rust-docs"));
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-std"), target)),
                     &pkg.join("rust-std"));
-            cp_r(&work.join(&format!("{}-{}", pkgname(build, "rls"), target)),
-                    &pkg.join("rls"));
             cp_r(&work.join(&format!("{}-{}", pkgname(build, "rust-analysis"), target)),
                     &pkg.join("rust-analysis"));
 
@@ -1277,7 +1283,6 @@ impl Step for Extended {
             install(&etc.join("pkg/postinstall"), &pkg.join("cargo"), 0o755);
             install(&etc.join("pkg/postinstall"), &pkg.join("rust-docs"), 0o755);
             install(&etc.join("pkg/postinstall"), &pkg.join("rust-std"), 0o755);
-            install(&etc.join("pkg/postinstall"), &pkg.join("rls"), 0o755);
             install(&etc.join("pkg/postinstall"), &pkg.join("rust-analysis"), 0o755);
 
             let pkgbuild = |component: &str| {
@@ -1292,8 +1297,15 @@ impl Step for Extended {
             pkgbuild("cargo");
             pkgbuild("rust-docs");
             pkgbuild("rust-std");
-            pkgbuild("rls");
             pkgbuild("rust-analysis");
+
+            if rls_installer.is_some() {
+                t!(fs::create_dir_all(pkg.join("rls")));
+                cp_r(&work.join(&format!("{}-{}", pkgname(build, "rls"), target)),
+                        &pkg.join("rls"));
+                install(&etc.join("pkg/postinstall"), &pkg.join("rls"), 0o755);
+                pkgbuild("rls");
+            }
 
             // create an 'uninstall' package
             install(&etc.join("pkg/postinstall"), &pkg.join("uninstall"), 0o755);
