@@ -218,6 +218,7 @@ supported_targets! {
 
     ("asmjs-unknown-emscripten", asmjs_unknown_emscripten),
     ("wasm32-unknown-emscripten", wasm32_unknown_emscripten),
+    ("wasm32-unknown-unknown", wasm32_unknown_unknown),
     ("wasm32-experimental-emscripten", wasm32_experimental_emscripten),
 
     ("thumbv6m-none-eabi", thumbv6m_none_eabi),
@@ -303,6 +304,8 @@ pub struct TargetOptions {
     pub features: String,
     /// Whether dynamic linking is available on this target. Defaults to false.
     pub dynamic_linking: bool,
+    /// If dynamic linking is available, whether only cdylibs are supported.
+    pub only_cdylib: bool,
     /// Whether executables are available on this target. iOS, for example, only allows static
     /// libraries. Defaults to false.
     pub executables: bool,
@@ -432,6 +435,17 @@ pub struct TargetOptions {
 
     /// Default number of codegen units to use in debug mode
     pub default_codegen_units: Option<u64>,
+
+    /// This target requires everything to be compiled with LTO to emit a final
+    /// executable, aka there is no native linker for this target.
+    pub requires_lto: bool,
+
+    /// This target has no support for threads.
+    pub singlethread: bool,
+
+    /// Whether library functions call lowering/optimization is disabled in LLVM
+    /// for this target unconditionally.
+    pub no_builtins: bool,
 }
 
 impl Default for TargetOptions {
@@ -447,6 +461,7 @@ impl Default for TargetOptions {
             cpu: "generic".to_string(),
             features: "".to_string(),
             dynamic_linking: false,
+            only_cdylib: false,
             executables: false,
             relocation_model: "pic".to_string(),
             code_model: "default".to_string(),
@@ -494,6 +509,9 @@ impl Default for TargetOptions {
             stack_probes: false,
             min_global_align: None,
             default_codegen_units: None,
+            requires_lto: false,
+            singlethread: false,
+            no_builtins: false,
         }
     }
 }
@@ -693,6 +711,7 @@ impl Target {
         key!(cpu);
         key!(features);
         key!(dynamic_linking, bool);
+        key!(only_cdylib, bool);
         key!(executables, bool);
         key!(relocation_model);
         key!(code_model);
@@ -734,6 +753,9 @@ impl Target {
         key!(stack_probes, bool);
         key!(min_global_align, Option<u64>);
         key!(default_codegen_units, Option<u64>);
+        key!(requires_lto, bool);
+        key!(singlethread, bool);
+        key!(no_builtins, bool);
 
         if let Some(array) = obj.find("abi-blacklist").and_then(Json::as_array) {
             for name in array.iter().filter_map(|abi| abi.as_string()) {
@@ -885,6 +907,7 @@ impl ToJson for Target {
         target_option_val!(cpu);
         target_option_val!(features);
         target_option_val!(dynamic_linking);
+        target_option_val!(only_cdylib);
         target_option_val!(executables);
         target_option_val!(relocation_model);
         target_option_val!(code_model);
@@ -926,6 +949,9 @@ impl ToJson for Target {
         target_option_val!(stack_probes);
         target_option_val!(min_global_align);
         target_option_val!(default_codegen_units);
+        target_option_val!(requires_lto);
+        target_option_val!(singlethread);
+        target_option_val!(no_builtins);
 
         if default.abi_blacklist != self.options.abi_blacklist {
             d.insert("abi-blacklist".to_string(), self.options.abi_blacklist.iter()

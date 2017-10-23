@@ -21,6 +21,7 @@ use rustc::ty::TyCtxt;
 use rustc::ty::maps::Providers;
 use rustc::util::nodemap::FxHashMap;
 use rustc_allocator::ALLOCATOR_METHODS;
+use rustc_back::LinkerFlavor;
 use syntax::attr;
 
 pub type ExportedSymbols = FxHashMap<
@@ -148,12 +149,28 @@ pub fn provide_extern(providers: &mut Providers) {
         let special_runtime_crate =
             tcx.is_panic_runtime(cnum) || tcx.is_compiler_builtins(cnum);
 
+        // Dealing with compiler-builtins and wasm right now is super janky.
+        // There's no linker! As a result we need all of the compiler-builtins
+        // exported symbols to make their way through all the way to the end of
+        // compilation. We want to make sure that LLVM doesn't remove them as
+        // well because we may or may not need them in the final output
+        // artifact. For now just force them to always get exported at the C
+        // layer, and we'll worry about gc'ing them later.
+        let compiler_builtins_and_binaryen =
+            tcx.is_compiler_builtins(cnum) &&
+            tcx.sess.linker_flavor() == LinkerFlavor::Binaryen;
+
         let crate_exports = tcx
             .exported_symbol_ids(cnum)
             .iter()
             .map(|&def_id| {
                 let name = tcx.symbol_name(Instance::mono(tcx, def_id));
-                let export_level = if special_runtime_crate {
+                let export_level = if compiler_builtins_and_binaryen &&
+                                      tcx.contains_extern_indicator(def_id) {
+                    SymbolExportLevel::C
+                } else if special_runtime_crate {
+                    let needs_export = tcx.sess.crate_types.borrow()
+                        .contains(&config::CrateTypeDylib);
                     // We can probably do better here by just ensuring that
                     // it has hidden visibility rather than public
                     // visibility, as this is primarily here to ensure it's
@@ -161,9 +178,10 @@ pub fn provide_extern(providers: &mut Providers) {
                     //
                     // In general though we won't link right if these
                     // symbols are stripped, and LTO currently strips them.
-                    if &*name == "rust_eh_personality" ||
-                       &*name == "rust_eh_register_frames" ||
-                       &*name == "rust_eh_unregister_frames" {
+                    if needs_export &&
+                       (&*name == "rust_eh_personality" ||
+                        &*name == "rust_eh_register_frames" ||
+                        &*name == "rust_eh_unregister_frames") {
                         SymbolExportLevel::C
                     } else {
                         SymbolExportLevel::Rust
