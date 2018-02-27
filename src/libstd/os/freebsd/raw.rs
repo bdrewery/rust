@@ -38,31 +38,51 @@ pub type pthread_t = usize;
 #[stable(feature = "raw_ext", since = "1.1.0")]
 pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_dev: u32,
+    pub st_dev: u64,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_ino: u32,
+    pub st_ino: u64,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_nlink: u64,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_mode: u16,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_nlink: u16,
+    pub st_pad0: u16,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_uid: u32,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_gid: u32,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_rdev: u32,
+    pub st_pad1: u32,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_rdev: u64,
+    #[cfg(target_arch = "x86")]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_atime_ext: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_atime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_atime_nsec: c_long,
+    #[cfg(target_arch = "x86")]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_mtime_ext: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_mtime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_mtime_nsec: c_long,
+    #[cfg(target_arch = "x86")]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_ctime_ext: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_ctime: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_ctime_nsec: c_long,
+    #[cfg(target_arch = "x86")]
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime_ext: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime: c_long,
+    #[stable(feature = "raw_ext", since = "1.1.0")]
+    pub st_birthtime_nsec: c_long,
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_size: i64,
     #[stable(feature = "raw_ext", since = "1.1.0")]
@@ -72,14 +92,7 @@ pub struct stat {
     #[stable(feature = "raw_ext", since = "1.1.0")]
     pub st_flags: u32,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_gen: u32,
+    pub st_gen: u64,
     #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_lspare: i32,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_birthtime: c_long,
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub st_birthtime_nsec: c_long,
-    #[cfg(target_arch = "x86")]
-    #[stable(feature = "raw_ext", since = "1.1.0")]
-    pub __unused: [u8; 8],
+    pub st_spare: [u64; 10],
 }

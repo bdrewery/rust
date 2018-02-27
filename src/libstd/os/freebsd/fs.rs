@@ -74,8 +74,6 @@ pub trait MetadataExt {
     fn st_flags(&self) -> u32;
     #[stable(feature = "metadata_ext2", since = "1.8.0")]
     fn st_gen(&self) -> u32;
-    #[stable(feature = "metadata_ext2", since = "1.8.0")]
-    fn st_lspare(&self) -> u32;
 }
 
 #[stable(feature = "metadata_ext", since = "1.1.0")]
@@ -146,9 +144,6 @@ impl MetadataExt for Metadata {
     }
     fn st_flags(&self) -> u32 {
         self.as_inner().as_inner().st_flags as u32
-    }
-    fn st_lspare(&self) -> u32 {
-        self.as_inner().as_inner().st_lspare as u32
     }
 }
 
