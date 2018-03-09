@@ -647,6 +647,8 @@ define_dep_nodes!( <'tcx>
 
     [] GetSymbolExportLevel(DefId),
 
+    [] WasmCustomSections(CrateNum),
+
     [input] Features,
 
     [] ProgramClausesFor(DefId),
