@@ -2586,6 +2586,7 @@ dependencies = [
 name = "unstable-book-gen"
 version = "0.1.0"
 dependencies = [
+ "num-traits 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "tidy 0.1.0",
 ]
 
