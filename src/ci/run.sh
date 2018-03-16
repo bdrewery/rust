@@ -25,7 +25,12 @@ source "$ci_dir/shared.sh"
 
 if [ "$TRAVIS" == "true" ] && [ "$TRAVIS_BRANCH" != "auto" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-quiet-tests"
+else
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings"
 fi
+
+# TODO: remove this before merging
+RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings"
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-manage-submodules"
